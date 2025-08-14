@@ -1,0 +1,14 @@
+apiVersion: v2
+name: cf-grafana
+description: Grafana visualization for OpenShift/ROSA
+type: application
+version: 1.0.0
+appVersion: "10.1.0"
+keywords:
+  - grafana
+  - monitoring
+  - visualization
+home: https://grafana.com/
+maintainers:
+  - name: Platform Team
+    email: platform@consultingfirm.com

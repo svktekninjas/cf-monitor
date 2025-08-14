@@ -1,0 +1,25 @@
+{{- if .Values.nodeExporter.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cf-monitoring.fullname" . }}-node-exporter
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "cf-monitoring.labels" . | nindent 4 }}
+    app: node-exporter
+    environment: {{ .Values.global.environment }}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9100"
+spec:
+  type: {{ .Values.nodeExporter.service.type }}
+  clusterIP: None
+  ports:
+  - port: {{ .Values.nodeExporter.service.port }}
+    targetPort: 9100
+    name: metrics
+    protocol: TCP
+  selector:
+    {{- include "cf-monitoring.selectorLabels" . | nindent 4 }}
+    app: node-exporter
+{{- end }}

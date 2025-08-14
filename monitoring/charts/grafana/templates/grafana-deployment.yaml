@@ -1,0 +1,114 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cf-monitoring.fullname" . }}-grafana
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "cf-monitoring.labels" . | nindent 4 }}
+    app: grafana
+    environment: {{ .Values.global.environment }}
+spec:
+  replicas: {{ .Values.grafana.replicas | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "cf-monitoring.selectorLabels" . | nindent 6 }}
+      app: grafana
+  template:
+    metadata:
+      labels:
+        {{- include "cf-monitoring.selectorLabels" . | nindent 8 }}
+        app: grafana
+        environment: {{ .Values.global.environment }}
+      annotations:
+        checksum/datasources: {{ include (print $.Template.BasePath "/grafana-configmap-datasources.yaml") . | sha256sum }}
+        checksum/dashboards: {{ include (print $.Template.BasePath "/grafana-configmap-dashboards.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "cf-monitoring.grafana.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: grafana
+        image: "{{ .Values.grafana.image.repository }}:{{ .Values.grafana.image.tag }}"
+        imagePullPolicy: {{ .Values.grafana.image.pullPolicy }}
+        ports:
+        - containerPort: 3000
+          name: http
+          protocol: TCP
+        env:
+        - name: GF_SECURITY_ADMIN_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "cf-monitoring.fullname" . }}-grafana-admin
+              key: admin-user
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "cf-monitoring.fullname" . }}-grafana-admin
+              key: admin-password
+        - name: GF_INSTALL_PLUGINS
+          value: {{ .Values.grafana.plugins | join "," }}
+        - name: GF_SECURITY_ALLOW_EMBEDDING
+          value: "true"
+        - name: GF_AUTH_ANONYMOUS_ENABLED
+          value: "false"
+        - name: GF_ANALYTICS_REPORTING_ENABLED
+          value: "false"
+        - name: GF_ANALYTICS_CHECK_FOR_UPDATES
+          value: "false"
+        - name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH
+          value: "/var/lib/grafana/dashboards/rosa-overview.json"
+        {{- with .Values.grafana.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.grafana.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - name: grafana-storage
+          mountPath: /var/lib/grafana
+        - name: grafana-datasources
+          mountPath: /etc/grafana/provisioning/datasources
+        - name: grafana-dashboards-provisioning
+          mountPath: /etc/grafana/provisioning/dashboards
+        - name: grafana-dashboards
+          mountPath: /var/lib/grafana/dashboards
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 60
+          timeoutSeconds: 30
+          periodSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+          periodSeconds: 10
+          failureThreshold: 3
+      volumes:
+      {{- if .Values.grafana.persistence.enabled }}
+      - name: grafana-storage
+        persistentVolumeClaim:
+          claimName: {{ include "cf-monitoring.fullname" . }}-grafana
+      {{- else }}
+      - name: grafana-storage
+        emptyDir: {}
+      {{- end }}
+      - name: grafana-datasources
+        configMap:
+          name: {{ include "cf-monitoring.fullname" . }}-grafana-datasources
+      - name: grafana-dashboards-provisioning
+        configMap:
+          name: {{ include "cf-monitoring.fullname" . }}-grafana-dashboards-provisioning
+      - name: grafana-dashboards
+        configMap:
+          name: {{ include "cf-monitoring.fullname" . }}-grafana-dashboards
+{{- end }}

@@ -1,0 +1,26 @@
+{{- if and .Values.prometheus.enabled .Values.route.prometheus.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "cf-monitoring.fullname" . }}-prometheus
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "cf-monitoring.labels" . | nindent 4 }}
+    app: prometheus
+    environment: {{ .Values.global.environment }}
+spec:
+  {{- if .Values.route.prometheus.host }}
+  host: {{ .Values.route.prometheus.host }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "cf-monitoring.fullname" . }}-prometheus
+    weight: 100
+  port:
+    targetPort: web
+  {{- if .Values.route.prometheus.tls }}
+  tls:
+    termination: {{ .Values.route.prometheus.tls.termination }}
+    insecureEdgeTerminationPolicy: {{ .Values.route.prometheus.tls.insecureEdgeTerminationPolicy }}
+  {{- end }}
+{{- end }}

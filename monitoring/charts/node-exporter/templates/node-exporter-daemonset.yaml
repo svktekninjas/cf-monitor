@@ -1,0 +1,98 @@
+{{- if .Values.nodeExporter.enabled }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "cf-monitoring.fullname" . }}-node-exporter
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "cf-monitoring.labels" . | nindent 4 }}
+    app: node-exporter
+    environment: {{ .Values.global.environment }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "cf-monitoring.selectorLabels" . | nindent 6 }}
+      app: node-exporter
+  updateStrategy:
+    {{- toYaml .Values.nodeExporter.daemonset.updateStrategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        {{- include "cf-monitoring.selectorLabels" . | nindent 8 }}
+        app: node-exporter
+        environment: {{ .Values.global.environment }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+    spec:
+      serviceAccountName: {{ include "cf-monitoring.nodeExporter.serviceAccountName" . }}
+      hostNetwork: {{ .Values.nodeExporter.hostNetwork }}
+      hostPID: {{ .Values.nodeExporter.hostPID }}
+      {{- with .Values.nodeExporter.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: node-exporter
+        image: "{{ .Values.nodeExporter.image.repository }}:{{ .Values.nodeExporter.image.tag }}"
+        imagePullPolicy: {{ .Values.nodeExporter.image.pullPolicy }}
+        args:
+          - --path.procfs=/host/proc
+          - --path.sysfs=/host/sys
+          - --path.rootfs=/host/root
+          - --web.listen-address=:9100
+          - --collector.filesystem.ignored-mount-points=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
+          - --collector.filesystem.ignored-fs-types=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$
+        ports:
+        - containerPort: 9100
+          name: metrics
+          protocol: TCP
+        {{- with .Values.nodeExporter.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.nodeExporter.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - name: proc
+          mountPath: /host/proc
+          readOnly: true
+        - name: sys
+          mountPath: /host/sys
+          readOnly: true
+        - name: rootfs
+          mountPath: /host/root
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 9100
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+          periodSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 9100
+          initialDelaySeconds: 5
+          timeoutSeconds: 10
+          periodSeconds: 10
+          failureThreshold: 3
+      volumes:
+      - name: proc
+        hostPath:
+          path: /proc
+      - name: sys
+        hostPath:
+          path: /sys
+      - name: rootfs
+        hostPath:
+          path: /
+{{- end }}

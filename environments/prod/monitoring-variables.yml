@@ -1,0 +1,119 @@
+# Production Environment Monitoring Variables
+environment: prod
+namespace: monitoring-prod
+
+# Prometheus Configuration
+prometheus:
+  enabled: true
+  image: prom/prometheus:v2.45.0
+  retention: 30d
+  storage:
+    size: 50Gi
+    class: gp3
+  resources:
+    requests:
+      memory: 1Gi
+      cpu: 200m
+    limits:
+      memory: 2Gi
+      cpu: 500m
+  scrapeInterval: 15s
+  evaluationInterval: 15s
+  replicas: 2
+
+# Grafana Configuration
+grafana:
+  enabled: true
+  image: grafana/grafana:10.1.0
+  adminUser: admin
+  adminPassword: admin-prod-2024  # Should be replaced with secret in production
+  resources:
+    requests:
+      memory: 300Mi
+      cpu: 150m
+    limits:
+      memory: 600Mi
+      cpu: 300m
+  persistence:
+    enabled: true
+    size: 10Gi
+    class: gp3
+  replicas: 2
+  ingress:
+    enabled: true
+    hostname: grafana.consultingfirm.com
+    tls:
+      enabled: true
+      secretName: grafana-tls
+
+# Node Exporter Configuration
+nodeExporter:
+  enabled: true
+  image: prom/node-exporter:v1.6.1
+  resources:
+    requests:
+      memory: 100Mi
+      cpu: 100m
+    limits:
+      memory: 200Mi
+      cpu: 200m
+
+# CloudWatch Integration
+cloudwatch:
+  enabled: true
+  region: us-east-1
+  logGroup: /rosa/cluster/prod
+  logRetentionDays: 30
+  containerInsights: true
+  detailedMetrics: true
+
+# RBAC Configuration
+rbac:
+  create: true
+
+# Security Context
+securityContext:
+  enabled: true
+  runAsNonRoot: true
+  fsGroup: 65534
+  readOnlyRootFilesystem: true
+
+# Network Policies
+networkPolicies:
+  enabled: true
+
+# Service Monitor
+serviceMonitor:
+  enabled: true
+  interval: 15s
+  scrapeTimeout: 10s
+
+# Alerting
+alerting:
+  enabled: true
+  alertmanager:
+    enabled: true
+    image: prom/alertmanager:v0.26.0
+    replicas: 2
+    resources:
+      requests:
+        memory: 200Mi
+        cpu: 100m
+      limits:
+        memory: 400Mi
+        cpu: 200m
+    persistence:
+      enabled: true
+      size: 5Gi
+    config:
+      global:
+        smtp_smarthost: 'smtp.consultingfirm.com:587'
+        smtp_from: 'alertmanager@consultingfirm.com'
+      receivers:
+        - name: 'pagerduty'
+          pagerduty_configs:
+            - service_key: 'PAGERDUTY_SERVICE_KEY'
+        - name: 'slack'
+          slack_configs:
+            - api_url: 'SLACK_WEBHOOK_URL'
+              channel: '#alerts-prod'

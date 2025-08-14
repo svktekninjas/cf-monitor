@@ -1,0 +1,15 @@
+# Namespace configuration
+namespace:
+  create: true
+  name: cf-monitor
+
+# RBAC configuration
+rbac:
+  create: true
+  openshift: true  # Enable OpenShift-specific RBAC (SCC bindings)
+
+# Labels to apply to namespace
+labels:
+  monitoring: "true"
+  environment: dev
+  team: platform

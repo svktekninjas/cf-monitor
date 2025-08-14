@@ -1,0 +1,47 @@
+{{- if .Values.prometheus.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cf-monitoring.fullname" . }}-prometheus
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "cf-monitoring.labels" . | nindent 4 }}
+    app: prometheus
+    environment: {{ .Values.global.environment }}
+  annotations:
+    prometheus.io/scrape: 'true'
+    prometheus.io/port: '9090'
+spec:
+  type: {{ .Values.prometheus.service.type }}
+  ports:
+  - port: {{ .Values.prometheus.service.port }}
+    targetPort: 9090
+    name: web
+    protocol: TCP
+  selector:
+    {{- include "cf-monitoring.selectorLabels" . | nindent 4 }}
+    app: prometheus
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cf-monitoring.fullname" . }}-prometheus-operated
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "cf-monitoring.labels" . | nindent 4 }}
+    app: prometheus
+    environment: {{ .Values.global.environment }}
+    operated-prometheus: "true"
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - port: 9090
+    targetPort: 9090
+    name: web
+    protocol: TCP
+  selector:
+    {{- include "cf-monitoring.selectorLabels" . | nindent 4 }}
+    app: prometheus
+{{- end }}

@@ -1,0 +1,151 @@
+{{- if .Values.networkPolicy.enabled }}
+---
+# Network Policy for Prometheus
+{{- if .Values.prometheus.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "cf-monitoring.fullname" . }}-prometheus
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "cf-monitoring.labels" . | nindent 4 }}
+    app: prometheus
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "cf-monitoring.selectorLabels" . | nindent 6 }}
+      app: prometheus
+  policyTypes:
+    {{- toYaml .Values.networkPolicy.policyTypes | nindent 4 }}
+  ingress:
+    # Allow traffic from within the namespace
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: {{ .Values.namespace.name }}
+    # Allow traffic from Grafana
+    - from:
+      - podSelector:
+          matchLabels:
+            app: grafana
+      ports:
+      - protocol: TCP
+        port: 9090
+    # Allow external access if ingress/route is enabled
+    {{- if or .Values.route.prometheus.enabled }}
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: openshift-ingress
+      ports:
+      - protocol: TCP
+        port: 9090
+    {{- end }}
+  egress:
+    # Allow DNS
+    - to:
+      - namespaceSelector: {}
+      ports:
+      - protocol: UDP
+        port: 53
+    # Allow access to Kubernetes API
+    - to:
+      - namespaceSelector:
+          matchLabels:
+            name: kube-system
+      ports:
+      - protocol: TCP
+        port: 443
+    # Allow scraping targets in all namespaces
+    - to:
+      - namespaceSelector: {}
+{{- end }}
+
+---
+# Network Policy for Grafana
+{{- if .Values.grafana.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "cf-monitoring.fullname" . }}-grafana
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "cf-monitoring.labels" . | nindent 4 }}
+    app: grafana
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "cf-monitoring.selectorLabels" . | nindent 6 }}
+      app: grafana
+  policyTypes:
+    {{- toYaml .Values.networkPolicy.policyTypes | nindent 4 }}
+  ingress:
+    # Allow traffic from within the namespace
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: {{ .Values.namespace.name }}
+    # Allow external access if ingress/route is enabled
+    {{- if or .Values.grafana.ingress.enabled .Values.route.grafana.enabled }}
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: openshift-ingress
+      ports:
+      - protocol: TCP
+        port: 3000
+    {{- end }}
+  egress:
+    # Allow DNS
+    - to:
+      - namespaceSelector: {}
+      ports:
+      - protocol: UDP
+        port: 53
+    # Allow access to Prometheus
+    - to:
+      - podSelector:
+          matchLabels:
+            app: prometheus
+      ports:
+      - protocol: TCP
+        port: 9090
+{{- end }}
+
+---
+# Network Policy for Node Exporter
+{{- if .Values.nodeExporter.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "cf-monitoring.fullname" . }}-node-exporter
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "cf-monitoring.labels" . | nindent 4 }}
+    app: node-exporter
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "cf-monitoring.selectorLabels" . | nindent 6 }}
+      app: node-exporter
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow Prometheus to scrape metrics
+    - from:
+      - podSelector:
+          matchLabels:
+            app: prometheus
+      ports:
+      - protocol: TCP
+        port: 9100
+    # Allow traffic from within the namespace
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: {{ .Values.namespace.name }}
+      ports:
+      - protocol: TCP
+        port: 9100
+{{- end }}
+{{- end }}

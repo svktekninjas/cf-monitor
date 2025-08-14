@@ -1,0 +1,128 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cf-monitoring.fullname" . }}-grafana-dashboards-provisioning
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "cf-monitoring.labels" . | nindent 4 }}
+    app: grafana
+    environment: {{ .Values.global.environment }}
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+    {{- range .Values.grafana.dashboardProviders }}
+    - name: {{ .name | quote }}
+      orgId: {{ .orgId }}
+      folder: {{ .folder | quote }}
+      type: {{ .type }}
+      disableDeletion: {{ .disableDeletion }}
+      updateIntervalSeconds: {{ .updateIntervalSeconds }}
+      allowUiUpdates: {{ .allowUiUpdates }}
+      options:
+        path: {{ .options.path }}
+    {{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cf-monitoring.fullname" . }}-grafana-dashboards
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "cf-monitoring.labels" . | nindent 4 }}
+    app: grafana
+    environment: {{ .Values.global.environment }}
+data:
+  rosa-overview.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "ROSA Cluster Overview",
+        "tags": ["rosa", "cluster", "overview"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "CPU Usage",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "100 - (avg(irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+                "refId": "A"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "Memory Usage",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100",
+                "refId": "A"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "Disk Usage",
+            "type": "gauge",
+            "targets": [
+              {
+                "expr": "(1 - (node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"})) * 100",
+                "refId": "A"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8}
+          },
+          {
+            "id": 4,
+            "title": "Network I/O",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(node_network_receive_bytes_total[5m])",
+                "legendFormat": "RX - {{`{{device}}`}}",
+                "refId": "A"
+              },
+              {
+                "expr": "rate(node_network_transmit_bytes_total[5m])",
+                "legendFormat": "TX - {{`{{device}}`}}",
+                "refId": "B"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 16, "x": 8, "y": 8}
+          },
+          {
+            "id": 5,
+            "title": "Pod Count",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "count(kube_pod_info)",
+                "refId": "A"
+              }
+            ],
+            "gridPos": {"h": 4, "w": 6, "x": 0, "y": 16}
+          },
+          {
+            "id": 6,
+            "title": "Node Count",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "count(kube_node_info)",
+                "refId": "A"
+              }
+            ],
+            "gridPos": {"h": 4, "w": 6, "x": 6, "y": 16}
+          }
+        ],
+        "time": {"from": "now-1h", "to": "now"},
+        "refresh": "30s"
+      }
+    }
+{{- end }}

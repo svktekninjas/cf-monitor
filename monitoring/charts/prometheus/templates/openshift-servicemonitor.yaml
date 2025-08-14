@@ -1,0 +1,80 @@
+{{- if and .Values.prometheus.enabled .Values.serviceMonitor.enabled }}
+---
+# ServiceMonitor for OpenShift's built-in node-exporter
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "cf-monitoring.fullname" . }}-openshift-node-exporter
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "cf-monitoring.labels" . | nindent 4 }}
+    app: prometheus
+    environment: {{ .Values.global.environment }}
+    {{- with .Values.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  namespaceSelector:
+    matchNames:
+    - openshift-monitoring
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: exporter
+      app.kubernetes.io/name: node-exporter
+  endpoints:
+  - port: https
+    interval: {{ .Values.serviceMonitor.interval }}
+    scrapeTimeout: {{ .Values.serviceMonitor.scrapeTimeout }}
+    path: /metrics
+    scheme: https
+    tlsConfig:
+      insecureSkipVerify: true
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    honorLabels: {{ .Values.serviceMonitor.honorLabels }}
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_endpoint_node_name]
+      targetLabel: node
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+
+---
+# ServiceMonitor for OpenShift's cluster monitoring
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "cf-monitoring.fullname" . }}-openshift-cluster-monitoring
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "cf-monitoring.labels" . | nindent 4 }}
+    app: prometheus
+    environment: {{ .Values.global.environment }}
+    {{- with .Values.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  namespaceSelector:
+    matchNames:
+    - openshift-monitoring
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: prometheus
+  endpoints:
+  - port: web
+    interval: {{ .Values.serviceMonitor.interval }}
+    scrapeTimeout: {{ .Values.serviceMonitor.scrapeTimeout }}
+    path: /federate
+    params:
+      'match[]':
+      - '{__name__=~"node_.*"}'
+      - '{__name__=~"kubelet_.*"}'
+      - '{__name__=~"container_.*"}'
+    scheme: https
+    tlsConfig:
+      insecureSkipVerify: true
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    honorLabels: true
+{{- end }}

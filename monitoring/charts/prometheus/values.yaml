@@ -1,0 +1,312 @@
+# Default values for cf-monitoring chart
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global configuration
+global:
+  environment: dev
+  clusterName: rosa-cluster
+  region: us-east-1
+
+# Namespace configuration
+namespace:
+  create: false  # Namespace should be created by namespace chart
+  name: cf-monitor
+
+# RBAC configuration
+rbac:
+  create: true
+
+# Security Context (OpenShift compatible)
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+# Prometheus configuration
+prometheus:
+  enabled: true
+  image:
+    repository: prom/prometheus
+    tag: v2.45.0
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 9090
+  
+  retention: 15d
+  
+  storage:
+    enabled: true
+    size: 10Gi
+    storageClass: ""  # Uses default storage class if not specified
+  
+  resources:
+    requests:
+      memory: 200Mi
+      cpu: 50m
+    limits:
+      memory: 400Mi
+      cpu: 100m
+  
+  config:
+    global:
+      scrapeInterval: 30s
+      evaluationInterval: 30s
+    
+    scrapeConfigs:
+      - jobName: prometheus
+        static:
+          targets:
+            - localhost:9090
+      
+      - jobName: node-exporter
+        kubernetes_sd: true
+        role: endpoints
+        namespaces:
+          - monitoring
+      
+      - jobName: kubernetes-pods
+        kubernetes_sd: true
+        role: pod
+        relabelConfigs:
+          - sourceLabels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+      
+      - jobName: kubernetes-services
+        kubernetes_sd: true
+        role: service
+        relabelConfigs:
+          - sourceLabels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+
+  serviceAccount:
+    create: true
+    name: prometheus
+    annotations: {}
+
+  securityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+# Grafana configuration
+grafana:
+  enabled: true
+  image:
+    repository: grafana/grafana
+    tag: 10.1.0
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 3000
+  
+  adminUser: admin
+  adminPassword: admin123  # Should be overridden in production
+  
+  persistence:
+    enabled: false
+    size: 5Gi
+    storageClass: ""
+  
+  resources:
+    requests:
+      memory: 100Mi
+      cpu: 50m
+    limits:
+      memory: 200Mi
+      cpu: 100m
+  
+  datasources:
+    - name: Prometheus
+      type: prometheus
+      url: http://prometheus:9090
+      access: proxy
+      isDefault: true
+  
+  dashboardProviders:
+    - name: default
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: false
+      updateIntervalSeconds: 10
+      allowUiUpdates: true
+      options:
+        path: /var/lib/grafana/dashboards
+  
+  dashboards:
+    default:
+      cluster-overview:
+        json: |
+          {
+            "dashboard": {
+              "title": "ROSA Cluster Overview",
+              "panels": []
+            }
+          }
+  
+  plugins:
+    - grafana-piechart-panel
+    - grafana-clock-panel
+  
+  serviceAccount:
+    create: true
+    name: grafana
+    annotations: {}
+  
+  securityContext:
+    runAsUser: 472
+    runAsGroup: 472
+    fsGroup: 472
+    runAsNonRoot: true
+  
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: grafana.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+# Node Exporter configuration
+nodeExporter:
+  enabled: true
+  image:
+    repository: prom/node-exporter
+    tag: v1.6.1
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 9100
+  
+  resources:
+    requests:
+      memory: 50Mi
+      cpu: 25m
+    limits:
+      memory: 100Mi
+      cpu: 50m
+  
+  serviceAccount:
+    create: true
+    name: node-exporter
+    annotations: {}
+  
+  securityContext:
+    runAsUser: 65534
+    runAsGroup: 65534
+    runAsNonRoot: true
+  
+  hostNetwork: true
+  hostPID: true
+  
+  tolerations:
+    - operator: Exists
+  
+  daemonset:
+    updateStrategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxUnavailable: 1
+
+# AlertManager configuration
+alertmanager:
+  enabled: false
+  image:
+    repository: prom/alertmanager
+    tag: v0.26.0
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 9093
+  
+  storage:
+    enabled: false
+    size: 2Gi
+  
+  resources:
+    requests:
+      memory: 100Mi
+      cpu: 50m
+    limits:
+      memory: 200Mi
+      cpu: 100m
+  
+  config:
+    global:
+      smtp_smarthost: 'localhost:587'
+      smtp_from: 'alertmanager@rosa.local'
+    route:
+      group_by: ['alertname']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 1h
+      receiver: 'web.hook'
+    receivers:
+      - name: 'web.hook'
+        webhook_configs:
+          - url: 'http://127.0.0.1:5001/'
+
+# ServiceMonitor configuration (for Prometheus Operator)
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  labels: {}
+  honorLabels: true
+
+# NetworkPolicy configuration
+networkPolicy:
+  enabled: false
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+  egress:
+    - to:
+        - namespaceSelector: {}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+      ports:
+        - protocol: TCP
+          port: 443
+
+# Route configuration (OpenShift specific)
+route:
+  prometheus:
+    enabled: false
+    host: ""
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect
+  
+  grafana:
+    enabled: false
+    host: ""
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect
+  
+  alertmanager:
+    enabled: false
+    host: ""
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect

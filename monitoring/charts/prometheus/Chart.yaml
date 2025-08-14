@@ -1,0 +1,14 @@
+apiVersion: v2
+name: cf-prometheus
+description: Prometheus monitoring for OpenShift/ROSA
+type: application
+version: 1.0.0
+appVersion: "v2.45.0"
+keywords:
+  - prometheus
+  - monitoring
+  - metrics
+home: https://prometheus.io/
+maintainers:
+  - name: Platform Team
+    email: platform@consultingfirm.com

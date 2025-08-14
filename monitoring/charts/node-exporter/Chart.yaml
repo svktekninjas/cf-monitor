@@ -1,0 +1,14 @@
+apiVersion: v2
+name: cf-node-exporter
+description: Node Exporter for OpenShift/ROSA nodes
+type: application
+version: 1.0.0
+appVersion: "v1.6.1"
+keywords:
+  - node-exporter
+  - monitoring
+  - metrics
+home: https://github.com/prometheus/node_exporter
+maintainers:
+  - name: Platform Team
+    email: platform@consultingfirm.com

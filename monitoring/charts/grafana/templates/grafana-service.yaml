@@ -1,0 +1,21 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cf-monitoring.fullname" . }}-grafana
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "cf-monitoring.labels" . | nindent 4 }}
+    app: grafana
+    environment: {{ .Values.global.environment }}
+spec:
+  type: {{ .Values.grafana.service.type }}
+  ports:
+  - port: {{ .Values.grafana.service.port }}
+    targetPort: 3000
+    name: http
+    protocol: TCP
+  selector:
+    {{- include "cf-monitoring.selectorLabels" . | nindent 4 }}
+    app: grafana
+{{- end }}

@@ -1,0 +1,100 @@
+{{- if .Values.prometheus.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "cf-monitoring.fullname" . }}-prometheus
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "cf-monitoring.labels" . | nindent 4 }}
+    app: prometheus
+    environment: {{ .Values.global.environment }}
+spec:
+  serviceName: {{ include "cf-monitoring.fullname" . }}-prometheus
+  replicas: {{ .Values.prometheus.replicas | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "cf-monitoring.selectorLabels" . | nindent 6 }}
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        {{- include "cf-monitoring.selectorLabels" . | nindent 8 }}
+        app: prometheus
+        environment: {{ .Values.global.environment }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/prometheus-configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "cf-monitoring.prometheus.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: prometheus
+        image: "{{ .Values.prometheus.image.repository }}:{{ .Values.prometheus.image.tag }}"
+        imagePullPolicy: {{ .Values.prometheus.image.pullPolicy }}
+        args:
+          - '--config.file=/etc/prometheus/prometheus.yml'
+          - '--storage.tsdb.path=/prometheus/'
+          - '--storage.tsdb.retention.time={{ .Values.prometheus.retention }}'
+          - '--web.console.libraries=/etc/prometheus/console_libraries'
+          - '--web.console.templates=/etc/prometheus/consoles'
+          - '--web.enable-lifecycle'
+          - '--web.enable-admin-api'
+        ports:
+        - containerPort: 9090
+          name: web
+          protocol: TCP
+        {{- with .Values.prometheus.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.prometheus.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - name: prometheus-config
+          mountPath: /etc/prometheus
+        - name: prometheus-storage
+          mountPath: /prometheus
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+          periodSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+          periodSeconds: 10
+          failureThreshold: 3
+      volumes:
+      - name: prometheus-config
+        configMap:
+          name: {{ include "cf-monitoring.fullname" . }}-prometheus-config
+  {{- if .Values.prometheus.storage.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: prometheus-storage
+      labels:
+        {{- include "cf-monitoring.labels" . | nindent 8 }}
+        app: prometheus
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      {{- if .Values.prometheus.storage.storageClass }}
+      storageClassName: {{ .Values.prometheus.storage.storageClass }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.prometheus.storage.size }}
+  {{- else }}
+      - name: prometheus-storage
+        emptyDir: {}
+  {{- end }}
+{{- end }}

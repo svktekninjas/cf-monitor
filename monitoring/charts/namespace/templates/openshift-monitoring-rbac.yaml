@@ -1,0 +1,83 @@
+{{- if .Values.rbac.create }}
+---
+# Role to allow Prometheus to view resources in openshift-monitoring namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Values.namespace.name }}-prometheus-viewer
+  namespace: openshift-monitoring
+  labels:
+    app: prometheus
+    monitoring: "true"
+rules:
+- apiGroups: [""]
+  resources:
+  - services
+  - endpoints
+  - pods
+  - nodes
+  - nodes/metrics
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources:
+  - daemonsets
+  verbs: ["get", "list", "watch"]
+
+---
+# RoleBinding to grant Prometheus SA access to openshift-monitoring
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Values.namespace.name }}-prometheus-viewer
+  namespace: openshift-monitoring
+  labels:
+    app: prometheus
+    monitoring: "true"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Values.namespace.name }}-prometheus-viewer
+subjects:
+- kind: ServiceAccount
+  name: prometheus
+  namespace: {{ .Values.namespace.name }}
+
+---
+# ClusterRole for cross-namespace metrics access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.namespace.name }}-metrics-reader
+  labels:
+    app: prometheus
+    monitoring: "true"
+rules:
+- apiGroups: ["metrics.k8s.io"]
+  resources:
+  - nodes
+  - pods
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources:
+  - nodes/proxy
+  - nodes/metrics
+  verbs: ["get"]
+
+---
+# ClusterRoleBinding for metrics reader
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Values.namespace.name }}-metrics-reader
+  labels:
+    app: prometheus
+    monitoring: "true"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Values.namespace.name }}-metrics-reader
+subjects:
+- kind: ServiceAccount
+  name: prometheus
+  namespace: {{ .Values.namespace.name }}
+{{- end }}
