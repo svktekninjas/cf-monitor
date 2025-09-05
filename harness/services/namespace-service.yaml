@@ -1,0 +1,21 @@
+service:
+  name: namespace-service
+  identifier: namespaceservice
+  serviceDefinition:
+    type: Kubernetes
+    spec:
+      manifests:
+        - manifest:
+            identifier: namespace
+            type: HelmChart
+            spec:
+              store:
+                type: Github
+                spec:
+                  connectorRef: harnessgitconnector   # Replace with your Harness GitHub connector
+                  gitFetchType: Branch
+                  repoName: cf-monitor
+                  branch: main
+                  folderPath: monitoring/charts/namespace
+              skipResourceVersioning: false
+  gitOpsEnabled: false

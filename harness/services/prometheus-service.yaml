@@ -1,0 +1,21 @@
+service:
+  name: prometheus-service
+  identifier: prometheusservice
+  serviceDefinition:
+    type: Kubernetes
+    spec:
+      manifests:
+        - manifest:
+            identifier: prometheus
+            type: HelmChart
+            spec:
+              store:
+                type: Github
+                spec:
+                  connectorRef: harnessgitconnector
+                  gitFetchType: Branch
+                  repoName: cf-monitor
+                  branch: main
+                  folderPath: monitoring/charts/prometheus
+              skipResourceVersioning: false
+  gitOpsEnabled: false

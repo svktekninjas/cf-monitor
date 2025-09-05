@@ -1,0 +1,151 @@
+pipeline:
+  name: cf-monitor-helm-deploy
+  identifier: cfmonitorhelmdeploy
+  projectIdentifier: default_project
+  orgIdentifier: default
+  tags: {}
+  stages:
+    - stage:
+        name: Deploy Namespace
+        identifier: deploynamespace
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: namespaceservice
+          environment:
+            environmentRef: harnessdevenv
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: harnessk8sinfra
+          execution:
+            steps:
+              - step:
+                  name: Helm Deploy Namespace
+                  identifier: helmDeployNamespace
+                  type: HelmDeploy
+                  timeout: 10m
+                  spec:
+                    skipDryRun: false
+            rollbackSteps:
+              - step:
+                  name: Rollback Namespace
+                  identifier: rollbackNamespace
+                  type: HelmRollback
+                  timeout: 5m
+                  spec: {}
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: Ignore
+    - stage:
+        name: Deploy Grafana
+        identifier: deploygrafana
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: grafanaservice
+          environment:
+            environmentRef: harnessdevenv
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: harnessk8sinfra
+          execution:
+            steps:
+              - step:
+                  name: Helm Deploy Grafana
+                  identifier: helmDeployGrafana
+                  type: HelmDeploy
+                  timeout: 15m
+                  spec:
+                    skipDryRun: false
+                    releaseName: grafana-release 
+            rollbackSteps:
+              - step:
+                  name: Rollback Grafana
+                  identifier: rollbackGrafana
+                  type: HelmRollback
+                  timeout: 5m
+                  spec: {}
+        tags: {}
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
+    - stage:
+        name: Deploy Prometheus
+        identifier: deployprometheus
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: prometheusservice
+          environment:
+            environmentRef: harnessdevenv
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: harnessk8sinfra
+          execution:
+            steps:
+              - step:
+                  name: Helm Deploy Prometheus
+                  identifier: helmDeployPrometheus
+                  type: HelmDeploy
+                  timeout: 15m
+                  spec:
+                    skipDryRun: false
+            rollbackSteps:
+              - step:
+                  name: Rollback Prometheus
+                  identifier: rollbackPrometheus
+                  type: HelmRollback
+                  timeout: 5m
+                  spec: {}
+        tags: {}
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
+    - stage:
+        name: Deploy Node Exporter
+        identifier: deploynodeexporter
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: nodeexporterservice
+          environment:
+            environmentRef: harnessdevenv
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: harnessk8sinfra
+          execution:
+            steps:
+              - step:
+                  name: Helm Deploy Node Exporter
+                  identifier: helmDeployNodeExporter
+                  type: HelmDeploy
+                  timeout: 15m
+                  spec:
+                    skipDryRun: false
+            rollbackSteps:
+              - step:
+                  name: Rollback Node Exporter
+                  identifier: rollbackNodeExporter
+                  type: HelmRollback
+                  timeout: 5m
+                  spec: {}
+        tags: {}
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
