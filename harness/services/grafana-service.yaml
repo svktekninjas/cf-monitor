@@ -1,0 +1,21 @@
+service:
+  name: grafana-service
+  identifier: grafanaservice
+  serviceDefinition:
+    type: Kubernetes
+    spec:
+      manifests:
+        - manifest:
+            identifier: grafana
+            type: HelmChart
+            spec:
+              store:
+                type: Github
+                spec:
+                  connectorRef: harnessgitconnector
+                  gitFetchType: Branch
+                  repoName: cf-monitor
+                  branch: main
+                  folderPath: monitoring/charts/grafana
+              skipResourceVersioning: false
+  gitOpsEnabled: false

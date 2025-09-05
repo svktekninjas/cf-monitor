@@ -1,0 +1,21 @@
+service:
+  name: node-exporter-service
+  identifier: nodeexporterservice
+  serviceDefinition:
+    type: Kubernetes
+    spec:
+      manifests:
+        - manifest:
+            identifier: nodeexporter
+            type: HelmChart
+            spec:
+              store:
+                type: Github
+                spec:
+                  connectorRef: harnessgitconnector
+                  gitFetchType: Branch
+                  repoName: cf-monitor
+                  branch: main
+                  folderPath: monitoring/charts/node-exporter
+              skipResourceVersioning: false
+  gitOpsEnabled: false

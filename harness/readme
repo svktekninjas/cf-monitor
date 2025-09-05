@@ -1,0 +1,23 @@
+#Harness Cli-login
+harness login --api-key <PAT token> --account-id <accountId>
+
+#Create Git Token Secret in Harness
+harness secret apply --token <GitHub Token> --secret-name "harness_gitpat"
+
+#Create GitHub Connector in Harness
+harness connector --file github-connector.yml apply --git-username <GitHub Username>
+
+#Create K8s Connector in Harness
+harness connector --file kubernetes-connector.yml apply --delegate-name kubernetes-delegate
+
+#Create Environment in Harness
+harness environment --file environment.yml apply
+
+#Create Infrastructure Definition in Harness
+harness infrastructure  --file infrastructure-definition.yml apply
+
+#Create Service in Harness
+harness service --file services/<service_file_name.yaml> apply
+
+#Create Pipeline in Harness
+harness pipeline --file pipelines/bluegreen-pipe-monitor.yaml apply
