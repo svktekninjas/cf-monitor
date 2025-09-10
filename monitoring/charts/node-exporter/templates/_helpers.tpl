@@ -45,7 +45,7 @@ Selector labels
 */}}
 {{- define "cf-monitoring.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "cf-monitoring.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/instance: {{ .Release.Name | quote }}
 {{- end }}
 
 {{/*
