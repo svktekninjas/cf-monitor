@@ -4,42 +4,8 @@ pipeline:
   projectIdentifier: default_project
   orgIdentifier: default
   tags: {}
+  description: "CF Monitor deployment pipeline - Namespace managed externally by Ansible"
   stages:
-    - stage:
-        name: Deploy Namespace
-        identifier: deploynamespace
-        type: Deployment
-        spec:
-          deploymentType: Kubernetes
-          service:
-            serviceRef: namespaceservice
-          environment:
-            environmentRef: harnessdevenv
-            deployToAll: false
-            infrastructureDefinitions:
-              - identifier: harnessk8sinfra
-          execution:
-            steps:
-              - step:
-                  name: Helm Deploy Namespace
-                  identifier: helmDeployNamespace
-                  type: HelmDeploy
-                  timeout: 10m
-                  spec:
-                    skipDryRun: false
-            rollbackSteps:
-              - step:
-                  name: Rollback Namespace
-                  identifier: rollbackNamespace
-                  type: HelmRollback
-                  timeout: 5m
-                  spec: {}
-        failureStrategies:
-          - onFailure:
-              errors:
-                - AllErrors
-              action:
-                type: Ignore
     - stage:
         name: Deploy Grafana
         identifier: deploygrafana

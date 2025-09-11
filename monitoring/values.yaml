@@ -8,14 +8,14 @@ global:
   clusterName: rosa-cluster
   region: us-east-1
 
-# Namespace configuration
+# Namespace configuration - MANAGED EXTERNALLY BY ANSIBLE
 namespace:
-  create: true
+  create: false  # Namespace is managed by Ansible, not Helm
   name: cf-monitor
 
-# RBAC configuration
+# RBAC configuration - MANAGED EXTERNALLY BY ANSIBLE  
 rbac:
-  create: true
+  create: false  # RBAC is managed by Ansible, not Helm
 
 # Security Context (OpenShift compatible)
 podSecurityContext:

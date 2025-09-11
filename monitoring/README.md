@@ -2,6 +2,29 @@
 
 This Helm chart deploys a complete monitoring stack on OpenShift/ROSA clusters, including Prometheus, Grafana, and Node Exporter.
 
+## Prerequisites
+
+**IMPORTANT:** This Helm chart requires the namespace and RBAC resources to be created externally before deployment.
+
+### Namespace and RBAC Setup
+The `cf-monitor` namespace and all required RBAC resources (ServiceAccounts, ClusterRoles, ClusterRoleBindings, etc.) must be created before deploying this Helm chart.
+
+**Recommended approach:** Use the `cf-monitor` Ansible role to set up the namespace and RBAC:
+
+```bash
+# Run Ansible role to setup namespace and RBAC
+ansible-playbook playbooks/main.yml \
+  -e "target_environment=dev" \
+  --tags setup_namespace
+```
+
+### Required Resources
+The following resources must exist before Helm deployment:
+- Namespace: `cf-monitor`
+- ServiceAccounts: `prometheus`, `grafana`, `node-exporter`
+- ClusterRoles and ClusterRoleBindings for metrics access
+- OpenShift SecurityContextConstraints (if on OpenShift)
+
 ## Components
 
 ### Prometheus
